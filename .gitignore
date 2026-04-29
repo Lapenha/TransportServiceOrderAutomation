@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+build/
+dist/
+release/
+release_v*/
+*.spec
+*.zip
+output/pdf/*.pdf
+data/*.db
+data/*.db-*
+.idea/
+.vscode/
+*.log
