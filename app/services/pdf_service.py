@@ -206,7 +206,7 @@ def _route_lines(order: ServiceOrder) -> list[str]:
     if origins and destinations:
         total = max(len(origins), len(destinations))
         return [
-            f"{origins[index] if index < len(origins) else ''} -> {destinations[index] if index < len(destinations) else ''}".strip(" ->")
+            _format_route(origins[index] if index < len(origins) else "", destinations[index] if index < len(destinations) else "")
             for index in range(total)
         ]
     if origins:
@@ -214,6 +214,16 @@ def _route_lines(order: ServiceOrder) -> list[str]:
     if destinations:
         return destinations
     return [""]
+
+
+def _format_route(origin: str, destination: str) -> str:
+    if origin and destination:
+        return f"Origem: {origin} -> Destino: {destination}"
+    if origin:
+        return f"Origem: {origin}"
+    if destination:
+        return f"Destino: {destination}"
+    return ""
 
 
 def _wrapped_value_line(c: canvas.Canvas, x: float, y: float, text: str, width: float, font_size: float = 7) -> None:

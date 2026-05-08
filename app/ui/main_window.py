@@ -163,11 +163,20 @@ class OSManagerApp(ctk.CTk):
         if origin_lines and destination_lines:
             total = max(len(origin_lines), len(destination_lines))
             routes = [
-                f"{origin_lines[index] if index < len(origin_lines) else ''} -> {destination_lines[index] if index < len(destination_lines) else ''}".strip(" ->")
+                self._format_route(origin_lines[index] if index < len(origin_lines) else "", destination_lines[index] if index < len(destination_lines) else "")
                 for index in range(total)
             ]
             return " / ".join(routes)
         return " / ".join(origin_lines or destination_lines)
+
+    def _format_route(self, origin: str, destination: str) -> str:
+        if origin and destination:
+            return f"Origem: {origin} -> Destino: {destination}"
+        if origin:
+            return f"Origem: {origin}"
+        if destination:
+            return f"Destino: {destination}"
+        return ""
 
     def refresh_clients(self) -> None:
         self._clear(self.clients_list)
@@ -634,9 +643,11 @@ class OrderDialog(BaseDialog):
         row.pack(fill="x", pady=(0, 6))
         number = len(self.route_entries) + 1
         ctk.CTkLabel(row, text=f"{number}.", width=28, anchor="w").pack(side="left")
+        ctk.CTkLabel(row, text="Origem:", width=58, anchor="w").pack(side="left", padx=(0, 4))
         origin_entry = ctk.CTkEntry(row, placeholder_text="Origem")
         origin_entry.insert(0, origin or "")
-        origin_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        origin_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ctk.CTkLabel(row, text="Destino:", width=62, anchor="w").pack(side="left", padx=(0, 4))
         destination_entry = ctk.CTkEntry(row, placeholder_text="Destino")
         destination_entry.insert(0, destination or "")
         destination_entry.pack(side="left", fill="x", expand=True)
