@@ -5,6 +5,7 @@ $desktop = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = Join-Path $desktop "Loop Adventure.lnk"
 $runScript = Join-Path $projectRoot "scripts\run.ps1"
 $iconTarget = Join-Path $projectRoot "release\Loop Adventure\Loop Adventure.exe"
+$iconFile = Join-Path $projectRoot "loop_adventure.ico"
 
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($shortcutPath)
@@ -18,8 +19,10 @@ if (Test-Path $iconTarget) {
 $shortcut.WorkingDirectory = $projectRoot
 $shortcut.Description = "Abrir Loop Adventure"
 
-if (Test-Path $iconTarget) {
-  $shortcut.IconLocation = $iconTarget
+if (Test-Path $iconFile) {
+  $shortcut.IconLocation = "$iconFile,0"
+} elseif (Test-Path $iconTarget) {
+  $shortcut.IconLocation = "$iconTarget,0"
 } else {
   $shortcut.IconLocation = "powershell.exe,0"
 }
