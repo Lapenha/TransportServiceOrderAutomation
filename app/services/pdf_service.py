@@ -206,7 +206,7 @@ def _route_lines(order: ServiceOrder) -> list[str]:
     if origins and destinations:
         total = max(len(origins), len(destinations))
         return [
-            f"{origins[index] if index < len(origins) else ''} - {destinations[index] if index < len(destinations) else ''}".strip(" -")
+            f"{origins[index] if index < len(origins) else ''} -> {destinations[index] if index < len(destinations) else ''}".strip(" ->")
             for index in range(total)
         ]
     if origins:

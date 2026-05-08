@@ -138,9 +138,7 @@ class OSManagerApp(ctk.CTk):
         self._clear(self.orders_list)
         self._row(self.orders_list, ["OS", "Data", "Tipo", "Cliente", "Prestador", "Veículo", "Roteiro"], header=True)
         for order in self.repo.list_orders(self.order_search.get()):
-            route = (order.origin or "").replace(chr(10), " / ")
-            if order.destination:
-                route = f"{route} -> {(order.destination or '').replace(chr(10), ' / ')}"
+            route = self._route_preview(order.origin, order.destination)
             vehicle = order.vehicle_ref.name if order.vehicle_ref else order.vehicle
             provider = (order.driver.nickname or order.driver.name) if order.driver else ""
             self._row(
@@ -149,6 +147,18 @@ class OSManagerApp(ctk.CTk):
                 item_id=order.id,
                 on_select=self._select_order,
             )
+
+    def _route_preview(self, origins: str, destinations: str) -> str:
+        origin_lines = [line.strip() for line in str(origins or "").splitlines() if line.strip()]
+        destination_lines = [line.strip() for line in str(destinations or "").splitlines() if line.strip()]
+        if origin_lines and destination_lines:
+            total = max(len(origin_lines), len(destination_lines))
+            routes = [
+                f"{origin_lines[index] if index < len(origin_lines) else ''} -> {destination_lines[index] if index < len(destination_lines) else ''}".strip(" ->")
+                for index in range(total)
+            ]
+            return " / ".join(routes)
+        return " / ".join(origin_lines or destination_lines)
 
     def refresh_clients(self) -> None:
         self._clear(self.clients_list)
@@ -520,7 +530,7 @@ class OrderDialog(BaseDialog):
     def __init__(self, parent, repo: Repository, order_id: int | None, on_saved) -> None:
         super().__init__(parent, "Ordem de Serviço", 720, 800)
         self.repo, self.order_id, self.on_saved = repo, order_id, on_saved
-        self.route_entries: list[ctk.CTkEntry] = []
+        self.route_entries: list[tuple[ctk.CTkEntry, ctk.CTkEntry]] = []
         order = repo.get_order(order_id) if order_id else None
         clients = repo.list_clients()
         drivers = repo.list_drivers()
@@ -553,7 +563,7 @@ class OrderDialog(BaseDialog):
         self.option("motorist", "Motorista", list(self.motorist_map.keys()), motorist_value)
         self.option("vehicle", "Tipo do veículo", list(self.vehicle_labels.keys()), vehicle_value)
         self.masked_field("service_time", "Horário", order.service_time if order else "", "time", "Ex: 08:30")
-        self._build_routes(order.origin if order else "")
+        self._build_routes(order.origin if order else "", order.destination if order else "")
         self._on_order_type_changed(self.get("order_type"))
         self.text_field("notes", "Observações", order.notes if order else "", 90)
         self.actions(self.save)
@@ -569,14 +579,14 @@ class OrderDialog(BaseDialog):
             return ""
         return f"{client.name} - {client.document}" if client.document else client.name
 
-    def _build_routes(self, value: str) -> None:
+    def _build_routes(self, origins_value: str, destinations_value: str = "") -> None:
         self.routes_title = ctk.CTkLabel(self.body, text="Embarque / trecho", anchor="w")
         self.routes_title.pack(fill="x", padx=8, pady=(8, 2))
         self.routes_frame = ctk.CTkFrame(self.body, fg_color="transparent")
         self.routes_frame.pack(fill="x", padx=8, pady=(0, 4))
-        routes = [line.strip() for line in str(value or "").splitlines() if line.strip()] or [""]
-        for route in routes:
-            self._add_route_field(route)
+        routes = self._split_saved_routes(origins_value, destinations_value)
+        for origin, destination in routes:
+            self._add_route_field(origin, destination)
         self.route_button_frame = ctk.CTkFrame(self.body, fg_color="transparent")
         self.route_button_frame.pack(fill="x", padx=8, pady=(2, 8))
         self.add_route_button = ctk.CTkButton(
@@ -584,19 +594,44 @@ class OrderDialog(BaseDialog):
             text="Adicionar trecho",
             width=150,
             fg_color=COLORS["primary"],
-            command=lambda: self._add_route_field(""),
+            command=lambda: self._add_route_field("", ""),
         )
         self.add_route_button.pack(anchor="w")
 
-    def _add_route_field(self, value: str = "") -> None:
+    def _split_saved_routes(self, origins_value: str, destinations_value: str = "") -> list[tuple[str, str]]:
+        origins = [line.strip() for line in str(origins_value or "").splitlines() if line.strip()]
+        destinations = [line.strip() for line in str(destinations_value or "").splitlines() if line.strip()]
+        if origins and not destinations:
+            split_routes = []
+            for route in origins:
+                separator = "->" if "->" in route else "-"
+                if separator in route:
+                    origin, destination = route.split(separator, 1)
+                    split_routes.append((origin.strip(), destination.strip()))
+                else:
+                    split_routes.append((route, ""))
+            return split_routes or [("", "")]
+        total = max(len(origins), len(destinations), 1)
+        return [
+            (
+                origins[index] if index < len(origins) else "",
+                destinations[index] if index < len(destinations) else "",
+            )
+            for index in range(total)
+        ]
+
+    def _add_route_field(self, origin: str = "", destination: str = "") -> None:
         row = ctk.CTkFrame(self.routes_frame, fg_color="transparent")
         row.pack(fill="x", pady=(0, 6))
         number = len(self.route_entries) + 1
         ctk.CTkLabel(row, text=f"{number}.", width=28, anchor="w").pack(side="left")
-        entry = ctk.CTkEntry(row, placeholder_text="Ex: SP - Osasco")
-        entry.insert(0, value or "")
-        entry.pack(side="left", fill="x", expand=True)
-        self.route_entries.append(entry)
+        origin_entry = ctk.CTkEntry(row, placeholder_text="Origem")
+        origin_entry.insert(0, origin or "")
+        origin_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        destination_entry = ctk.CTkEntry(row, placeholder_text="Destino")
+        destination_entry.insert(0, destination or "")
+        destination_entry.pack(side="left", fill="x", expand=True)
+        self.route_entries.append((origin_entry, destination_entry))
         self._renumber_routes()
 
     def _on_order_type_changed(self, value: str) -> None:
@@ -609,21 +644,35 @@ class OrderDialog(BaseDialog):
                 self.route_button_frame.pack(fill="x", padx=8, pady=(2, 8), after=self.routes_frame)
         else:
             self.route_button_frame.pack_forget()
-            for entry in self.route_entries[1:]:
-                entry.master.destroy()
+            for origin_entry, _destination_entry in self.route_entries[1:]:
+                origin_entry.master.destroy()
             self.route_entries = self.route_entries[:1]
             self._renumber_routes()
 
     def _renumber_routes(self) -> None:
-        for index, entry in enumerate(self.route_entries, start=1):
-            label = entry.master.winfo_children()[0]
+        for index, (origin_entry, _destination_entry) in enumerate(self.route_entries, start=1):
+            label = origin_entry.master.winfo_children()[0]
             label.configure(text=f"{index}.")
 
-    def _get_routes(self) -> str:
+    def _selected_route_entries(self) -> list[tuple[ctk.CTkEntry, ctk.CTkEntry]]:
         entries = self.route_entries
         if self.get("order_type") != "Servico completo":
             entries = entries[:1]
-        return "\n".join(entry.get().strip() for entry in entries if entry.get().strip())
+        return entries
+
+    def _get_origins(self) -> str:
+        return "\n".join(
+            origin_entry.get().strip()
+            for origin_entry, destination_entry in self._selected_route_entries()
+            if origin_entry.get().strip() or destination_entry.get().strip()
+        )
+
+    def _get_destinations(self) -> str:
+        return "\n".join(
+            destination_entry.get().strip()
+            for origin_entry, destination_entry in self._selected_route_entries()
+            if origin_entry.get().strip() or destination_entry.get().strip()
+        )
 
     def save(self) -> None:
         try:
@@ -657,8 +706,8 @@ class OrderDialog(BaseDialog):
                 "service_time": self.get("service_time"),
                 "km_initial": "",
                 "km_final": "",
-                "origin": self._get_routes(),
-                "destination": "",
+                "origin": self._get_origins(),
+                "destination": self._get_destinations(),
                 "vehicle": vehicle.name,
                 "passengers": "",
                 "payment_status": "Pendente",
