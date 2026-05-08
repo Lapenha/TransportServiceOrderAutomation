@@ -26,6 +26,7 @@ class Settings:
     data_dir: Path = DATA_DIR
     output_pdf_dir: Path = Path.home() / "Downloads"
     logo_path: Path = RESOURCE_DIR / "logoloop.png"
+    icon_path: Path = RESOURCE_DIR / "loop_adventure.ico"
 
 
 settings = Settings()

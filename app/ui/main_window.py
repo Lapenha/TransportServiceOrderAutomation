@@ -28,6 +28,7 @@ class OSManagerApp(ctk.CTk):
         self.logo_image = self._load_logo()
 
         self.title(app_name)
+        self._apply_window_icon()
         self.geometry("1240x740")
         self.minsize(1060, 660)
         self.configure(fg_color=COLORS["bg"])
@@ -49,6 +50,14 @@ class OSManagerApp(ctk.CTk):
         if settings.logo_path.exists():
             return ctk.CTkImage(Image.open(settings.logo_path), size=(230, 90))
         return None
+
+    def _apply_window_icon(self) -> None:
+        if not settings.icon_path.exists():
+            return
+        try:
+            self.iconbitmap(str(settings.icon_path))
+        except Exception:
+            pass
 
     def _build_header(self) -> None:
         header = ctk.CTkFrame(self, fg_color="transparent")
